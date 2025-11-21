@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-batch-job
+  labels:
+    app: sql-batch-job
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sql-batch-job
+  template:
+    metadata:
+      labels:
+        app: sql-batch-job
+    spec:
+      containers:
+        - name: sql-batch-job
+          image: myregistry.azurecr.io/sql-batch-job:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: health
+          env:
+            - name: DB_POOL_SIZE
+              value: "2"
+            - name: DB_QUERY
+              value: "SELECT 1"
+            - name: INTERVAL_SECONDS
+              value: "30"
+          envFrom:
+            - secretRef:
+                name: sql-batch-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
